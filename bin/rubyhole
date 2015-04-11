@@ -1,0 +1,66 @@
+#!/usr/bin/env ruby
+
+require 'rubyhole'
+require 'em-websocket'
+require 'bunny'
+require 'json'
+
+$running = true
+Signal.trap('TERM') do
+  $running = false
+end
+
+def handle_binding(ch, x, data)
+  ch.queue('', :auto_delete => true).bind(x, :routing_key => data['routing_key'])
+end
+
+def subscribe(q, ws)
+  q.subscribe(:block => false, :manual_ack => false) do |delivery_info, properties, payload|
+    #ws.send "Received #{payload}, message properties are #{properties.inspect}"
+    ws.send payload
+  end
+end
+
+def create_channel(conn)
+  conn.create_channel
+end
+
+while($running) do
+  EM.run do
+    puts 'socket ready...'
+    EM::WebSocket.run(:host => '0.0.0.0', :port => 8080) do |ws|
+      conn = Bunny.new(:host => '54.154.93.107', :user => 'prima', :pass => 'prima', :vhost => 'prima')
+      conn.start
+      ch = create_channel conn
+      x = ch.topic('entity', {:durable => true})
+      q = ch.queue('', :auto_delete => true).bind(x, :routing_key => '#')
+
+      subscribe q, ws
+
+      ws.onopen do |handshake|
+        puts 'WebSocket connection open'
+      end
+
+      ws.onclose do
+        conn.close
+        puts 'Connection closed'
+      end
+
+      ws.onmessage do |msg|
+        puts "Recieved message: #{msg}"
+        data = JSON.parse(msg)
+        case data['action']
+          when 'binding'
+            ch.close if ch.status == :open
+            ch = create_channel conn
+            q = handle_binding ch, x, data
+            subscribe q, ws
+          when 'stop'
+            q.unbind x
+            q.delete
+            ch.close if ch.status == :open
+        end
+      end
+    end
+  end
+end

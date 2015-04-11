@@ -1,0 +1,14 @@
+rb:
+  build: .
+  volumes:
+    - .:/code
+  links:
+      - rabbit
+  ports:
+    - "8080:8080"
+  command: "./bin/rubyhole"
+
+rabbit:
+  image: rabbitmq:3-management
+  ports:
+    - "15673:15672"
