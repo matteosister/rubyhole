@@ -1,0 +1,4 @@
+---
+- name: install supervisor package
+  action: apt pkg=supervisor state=latest
+  sudo: yes

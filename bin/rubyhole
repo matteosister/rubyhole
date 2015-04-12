@@ -10,7 +10,6 @@ Signal.trap('TERM') do
   $running = false
 end
 
-
 while($running) do
   EM.run do
     puts 'socket ready...'
@@ -23,13 +22,18 @@ while($running) do
       x = ch.topic('entity', {:durable => true})
       q = ch.queue('', :auto_delete => true).bind(x, :routing_key => '#')
 
-      subscribe q, ws
+      rabbitmq_manager.subscribe q, ws
 
       ws.onopen do |handshake|
         puts 'WebSocket connection open'
       end
 
       ws.onclose do
+        unless q.nil?
+          q.purge
+          q.delete
+        end
+        rabbitmq_manager.close_channel
         conn.close
         puts 'Connection closed'
       end

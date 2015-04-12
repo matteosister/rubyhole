@@ -1,0 +1,33 @@
+---
+  - hosts: ovh-vps
+    remote_user: matteo
+    sudo: yes
+
+    vars:
+      dest: /var/www/ruby/rubyhole
+      setup: no
+
+    roles:
+        - { role: supervisor, when: setup }
+
+    tasks:
+        - apt: name=git state=latest
+          when: setup
+
+        - copy: src=_files/rubyhole.conf dest=/etc/supervisor/conf.d/rubyhole.conf
+
+        - file: path=/var/log/rubyhole state=directory
+          when: setup
+
+        - synchronize: src=../ dest={{dest}} delete=yes perms=yes
+
+        - name: install deps
+          sudo_user: matteo
+          command: bash -lc "gem install {{ item }}" chdir={{dest}}
+          with_items:
+            - bunny
+            - em-websocket
+          when: setup
+
+        - service: name=supervisor state=stopped
+        - service: name=supervisor state=started
