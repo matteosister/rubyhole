@@ -10,28 +10,16 @@ Signal.trap('TERM') do
   $running = false
 end
 
-def handle_binding(ch, x, data)
-  ch.queue('', :auto_delete => true).bind(x, :routing_key => data['routing_key'])
-end
-
-def subscribe(q, ws)
-  q.subscribe(:block => false, :manual_ack => false) do |delivery_info, properties, payload|
-    #ws.send "Received #{payload}, message properties are #{properties.inspect}"
-    ws.send payload
-  end
-end
-
-def create_channel(conn)
-  conn.create_channel
-end
 
 while($running) do
   EM.run do
     puts 'socket ready...'
     EM::WebSocket.run(:host => '0.0.0.0', :port => 8080) do |ws|
       conn = Bunny.new(:host => '54.154.93.107', :user => 'prima', :pass => 'prima', :vhost => 'prima')
+      rabbitmq_manager = Rubyhole::RabbitMqManager.new(conn)
+
       conn.start
-      ch = create_channel conn
+      ch = rabbitmq_manager.create_channel
       x = ch.topic('entity', {:durable => true})
       q = ch.queue('', :auto_delete => true).bind(x, :routing_key => '#')
 
@@ -51,14 +39,13 @@ while($running) do
         data = JSON.parse(msg)
         case data['action']
           when 'binding'
-            ch.close if ch.status == :open
-            ch = create_channel conn
-            q = handle_binding ch, x, data
-            subscribe q, ws
+            ch = rabbitmq_manager.create_channel
+            q = rabbitmq_manager.bind ch, x, data
+            rabbitmq_manager.subscribe q, ws
           when 'stop'
             q.unbind x
             q.delete
-            ch.close if ch.status == :open
+            rabbitmq_manager.close_channel
         end
       end
     end
