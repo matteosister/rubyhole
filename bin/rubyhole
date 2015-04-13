@@ -4,19 +4,45 @@ require 'rubyhole'
 require 'em-websocket'
 require 'bunny'
 require 'json'
+require 'optparse'
 
 $running = true
 Signal.trap('TERM') do
   $running = false
 end
 
+# command line
+options = {
+    :host      => '127.0.0.1',
+    :port      => 5672,
+    :ssl       => false,
+    :vhost     => '/',
+    :user      => 'guest',
+    :pass      => 'guest',
+    :heartbeat => :server, # will use RabbitMQ setting
+    :frame_max => 131072,
+    :auth_mechanism => 'PLAIN'
+}
+
+OptionParser.new do |opts|
+  opts.banner = 'Usage: ./rubyhole [options]'
+  overridable_options = [:host, :port, :vhost, :user, :pass]
+  options.each_pair do |key, val|
+    if overridable_options.include?(key)
+      opts.on(sprintf('--%s %s', key.to_s, key.to_s.upcase), key.to_s) do |c|
+        options[key] = c
+      end
+    end
+  end
+end.parse!
+
 while($running) do
   EM.run do
     puts 'socket ready...'
     EM::WebSocket.run(:host => '0.0.0.0', :port => 8080) do |ws|
-      conn = Bunny.new(:host => '54.154.93.107', :user => 'prima', :pass => 'prima', :vhost => 'prima')
+      puts 'opening rabbitmq connection'
+      conn = Bunny.new(options)
       rabbitmq_manager = Rubyhole::RabbitMqManager.new(conn)
-
       conn.start
       ch = rabbitmq_manager.create_channel
       x = ch.topic('entity', {:durable => true})

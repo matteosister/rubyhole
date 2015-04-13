@@ -13,8 +13,8 @@ Gem::Specification.new do |spec|
     spec.metadata['allowed_push_host'] = "TODO: Set to 'http://mygemserver.com' to prevent pushes to rubygems.org, or delete to allow pushes to any server."
   end
 
-  spec.summary       = %q{expose RabbitMQ messages to socket}
-  spec.description   = %q{expose RabbitMQ messages to socket}
+  spec.summary       = %q{expose RabbitMQ messages to a socket}
+  spec.description   = %q{expose RabbitMQ messages to a socket}
   spec.homepage      = "http://rubyhole.cypresslab.net"
   spec.license       = "MIT"
 
@@ -25,6 +25,7 @@ Gem::Specification.new do |spec|
 
   spec.add_development_dependency "bundler", "~> 1.8"
   spec.add_development_dependency "rake", "~> 10.0"
+  spec.add_development_dependency "rspec"
   spec.add_runtime_dependency "bunny", "~> 1.7"
   spec.add_runtime_dependency "em-websocket", "~> 0.5"
 end

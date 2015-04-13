@@ -2,6 +2,8 @@ require 'bunny'
 
 module Rubyhole
   class RabbitMqManager
+    attr_reader :conn, :ch
+
     def initialize(conn)
       @conn = conn
       @ch = nil
